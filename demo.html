@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Demo interactiva · Bandeja de WhatsApp con triage automático</title>
+<meta name="description" content="Probá cómo una consulta que llega por WhatsApp se clasifica sola en tres preguntas, o se deriva amablemente si no es para tu estudio.">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lora:wght@600;700&family=Plus+Jakarta+Sans:wght@500;600&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+
+<style>
+  /* =========================================================
+     PALETA — pensada para transmitir calma y trato profesional
+     ========================================================= */
+  :root{
+    --petroleo: #0F4C5C;     /* base principal: headers, botones */
+    --menta: #4A7C59;        /* acentos de calma / confirmaciones */
+    --marfil: #FAFAFA;       /* fondo cálido del chat */
+    --noche: #0D1B2A;        /* texto y contraste */
+    --linea: #E1E4E1;
+    --max-width: 900px;
+    --radius: 14px;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+
+  body{
+    margin: 0;
+    background: var(--marfil);
+    color: var(--noche);
+    font-family: 'Inter', sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+  }
+
+  h1, h2, h3 {
+    font-family: 'Lora', serif;
+    color: var(--petroleo);
+    margin: 0 0 0.5em 0;
+    line-height: 1.3;
+  }
+
+  h1 { font-size: clamp(1.4rem, 3.4vw, 1.9rem); }
+  h2 { font-size: clamp(1.15rem, 2.4vw, 1.4rem); }
+
+  p { margin: 0 0 1em 0; }
+  p:last-child{ margin-bottom: 0; }
+
+  .container{
+    max-width: var(--max-width);
+    margin: 0 auto;
+    padding: 0 20px;
+  }
+
+  /* ============ HEADER ============ */
+  header{
+    border-bottom: 1px solid var(--linea);
+    padding: 16px 0;
+  }
+
+  .header-inner{
+    max-width: var(--max-width);
+    margin: 0 auto;
+    padding: 0 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .header-inner a.volver{
+    font-family: 'Inter', sans-serif;
+    font-weight: 500;
+    font-size: 0.92rem;
+    color: var(--petroleo);
+    text-decoration: none;
+  }
+  .header-inner a.volver:hover{ text-decoration: underline; }
+
+  .header-inner .marca{
+    font-family: 'Lora', serif;
+    font-weight: 700;
+    color: var(--petroleo);
+    font-size: 1rem;
+  }
+
+  /* ============ FRASES ANTES / DESPUÉS ============ */
+  .frase-bloque{
+    padding: 40px 0 8px;
+  }
+
+  .frase-bloque .tag{
+    display: inline-block;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-weight: 600;
+    font-size: 0.78rem;
+    letter-spacing: 0.02em;
+    padding: 4px 12px;
+    border-radius: 20px;
+    margin-bottom: 10px;
+  }
+
+  .frase-bloque.antes .tag{ background: #E7E3DA; color: #5C5A50; }
+  .frase-bloque.despues .tag{ background: var(--menta); color: #fff; }
+
+  .frase-bloque p{
+    font-family: 'Lora', serif;
+    font-size: clamp(1.05rem, 2.2vw, 1.3rem);
+    color: var(--noche);
+    max-width: 62ch;
+    margin: 0;
+  }
+
+  .frase-bloque.despues{ padding-top: 8px; padding-bottom: 40px; }
+
+  /* ============ DEMO: DOS COLUMNAS ============ */
+  .demo-wrap{ padding: 12px 0 48px; }
+
+  .demo-columns{
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    align-items: start;
+  }
+
+  @media (max-width: 760px){
+    .demo-columns{ grid-template-columns: 1fr; }
+  }
+
+  .col{
+    background: #fff;
+    border-radius: var(--radius);
+    border: 1px solid var(--linea);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .col-header{
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-weight: 600;
+    font-size: 0.92rem;
+    color: #fff;
+    background: var(--petroleo);
+    padding: 12px 16px;
+  }
+
+  .col-caotica .col-header{ background: #7A756A; } /* apagado a propósito: representa el caos */
+
+  .mensajes{
+    list-style: none;
+    margin: 0;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 60px;
+  }
+
+  .msg{
+    background: var(--marfil);
+    border: 1px solid var(--linea);
+    border-left: 3px solid #B7B2A6;
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-size: 0.9rem;
+    color: var(--noche);
+    animation: aparecer 0.35s ease;
+  }
+
+  .msg .hora{
+    display: block;
+    font-size: 0.75rem;
+    color: #7C766A;
+    margin-bottom: 4px;
+  }
+
+  .msg.sin-responder{ border-left-color: #B23A3A; }
+  .msg.sin-responder .hora{ color: #B23A3A; font-weight: 600; }
+
+  .msg.nuevo{ border-left-color: var(--petroleo); box-shadow: 0 0 0 2px rgba(15,76,92,0.12); }
+
+  .msg.saliendo{ animation: salir 0.3s ease forwards; }
+
+  @keyframes aparecer{
+    from{ opacity: 0; transform: translateY(-6px); }
+    to{ opacity: 1; transform: translateY(0); }
+  }
+  @keyframes salir{
+    from{ opacity: 1; transform: scale(1); }
+    to{ opacity: 0; transform: scale(0.94); }
+  }
+
+  .area-block{
+    padding: 4px 12px 12px;
+  }
+
+  .area-block h4{
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--petroleo);
+    margin: 8px 0 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--linea);
+  }
+
+  .area-block.aliado h4{ color: #7C6A2E; }
+
+  .msg.clasificado{ border-left-color: var(--menta); }
+  .msg.derivado{ border-left-color: #C99A2E; }
+
+  .msg .nota{
+    display: block;
+    font-size: 0.78rem;
+    color: var(--menta);
+    font-weight: 500;
+    margin-top: 6px;
+  }
+
+  .msg.derivado .nota{ color: #8A6A1E; }
+
+  .vacio{
+    color: #A7A296;
+    font-size: 0.85rem;
+    font-style: italic;
+    background: transparent;
+    border: 1px dashed var(--linea);
+    border-left: 1px dashed var(--linea);
+  }
+
+  /* ============ PANEL DE TRIAGE ============ */
+  .triage-panel{
+    margin-top: 22px;
+    background: #fff;
+    border: 1px solid var(--linea);
+    border-radius: var(--radius);
+    padding: 22px;
+  }
+
+  .triage-panel .pregunta{
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 1rem;
+    color: var(--noche);
+    margin-bottom: 14px;
+  }
+
+  .triage-panel .breadcrumb{
+    font-size: 0.82rem;
+    color: #7C766A;
+    margin-bottom: 12px;
+  }
+
+  .opciones{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .btn{
+    display: inline-block;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-weight: 600;
+    font-size: 0.92rem;
+    color: #fff;
+    background: var(--petroleo);
+    padding: 12px 22px;
+    border-radius: 30px;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    transition: background 0.2s ease;
+  }
+  .btn:hover{ background: #0B3A46; }
+
+  .btn.btn-secundario{
+    background: transparent;
+    color: var(--petroleo);
+    border: 1.5px solid var(--petroleo);
+  }
+  .btn.btn-secundario:hover{ background: rgba(15,76,92,0.06); }
+
+  .resultado{
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .resultado .icono{
+    font-size: 1.4rem;
+    line-height: 1;
+  }
+
+  .resultado .texto strong{ color: var(--menta); }
+  .resultado.derivado .texto strong{ color: #8A6A1E; }
+
+  .acciones-resultado{
+    margin-top: 16px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  /* ============ CTA FINAL ============ */
+  .cta-final{
+    background: var(--petroleo);
+    color: #fff;
+    padding: 56px 0;
+    text-align: left;
+  }
+
+  .cta-final h2{ color: #fff; }
+  .cta-final p{ color: #D9E4E2; max-width: 50ch; }
+
+  .cta-final .btn{
+    background: var(--menta);
+  }
+  .cta-final .btn:hover{ background: #3D6A49; }
+
+  footer{
+    padding: 24px 0 36px;
+    font-size: 0.82rem;
+    color: #8A8578;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <a class="volver" href="index.html">← Volver a la presentación</a>
+    <span class="marca">Sandra Barraza</span>
+  </div>
+</header>
+
+<!-- ===================== ANTES ===================== -->
+<div class="container">
+  <div class="frase-bloque antes">
+    <span class="tag">Antes</span>
+    <p>Todo entra por el mismo WhatsApp del estudio: una consulta societaria, un despido y un divorcio, todos mezclados en la misma bandeja.</p>
+  </div>
+</div>
+
+<!-- ===================== DEMO INTERACTIVA ===================== -->
+<div class="container demo-wrap">
+  <h1>Probá cómo se clasifica sola una consulta</h1>
+  <p style="color:#5C5A50; margin-bottom: 20px;">Ejemplo con un estudio jurídico. Simulá una consulta nueva y contestá las preguntas como si fueras el cliente.</p>
+
+  <div class="demo-columns">
+
+    <!-- Columna caótica: como llega hoy -->
+    <div class="col col-caotica">
+      <div class="col-header">📥 WhatsApp del estudio — bandeja única</div>
+      <ul class="mensajes" id="listaCaotica">
+        <li class="msg sin-responder">
+          <span class="hora">hace 2 días</span>
+          ¿Siguen atendiendo? Les escribí y no tuve respuesta.
+        </li>
+        <li class="msg">
+          <span class="hora">08:50</span>
+          Nos llegó una demanda laboral, necesitamos contestarla urgente.
+        </li>
+        <li class="msg">
+          <span class="hora">09:15</span>
+          Buenas! Quiero importar mercadería desde China, ¿me pueden asesorar?
+        </li>
+        <li class="msg">
+          <span class="hora">11:03</span>
+          Necesito armar una SA con dos socios, ¿cómo arrancamos?
+        </li>
+        <li class="msg">
+          <span class="hora">14:32</span>
+          Hola, necesito ayuda con un despido, ¿cuánto sale la consulta?
+        </li>
+        <li class="msg">
+          <span class="hora">16:20</span>
+          Estoy separándome y no sé cómo dividir los bienes.
+        </li>
+      </ul>
+    </div>
+
+    <!-- Columna organizada: resultado del triage -->
+    <div class="col col-organizada">
+      <div class="col-header">📂 Clasificado por área</div>
+      <div id="areasContainer">
+        <div class="area-block" data-area="corporativo">
+          <h4>Derecho Corporativo</h4>
+          <ul class="mensajes"><li class="msg vacio">Todavía no hay consultas asignadas.</li></ul>
+        </div>
+        <div class="area-block" data-area="comex">
+          <h4>Comercio Exterior</h4>
+          <ul class="mensajes"><li class="msg vacio">Todavía no hay consultas asignadas.</li></ul>
+        </div>
+        <div class="area-block" data-area="laboral">
+          <h4>Laboral</h4>
+          <ul class="mensajes"><li class="msg vacio">Todavía no hay consultas asignadas.</li></ul>
+        </div>
+        <div class="area-block" data-area="civil">
+          <h4>Civil</h4>
+          <ul class="mensajes"><li class="msg vacio">Todavía no hay consultas asignadas.</li></ul>
+        </div>
+        <div class="area-block aliado" data-area="aliado">
+          <h4>🤝 Derivado a un estudio aliado</h4>
+          <ul class="mensajes"><li class="msg vacio">Todavía no hay derivaciones.</li></ul>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Panel de triage: acá vive toda la interacción -->
+  <div class="triage-panel" id="triagePanel">
+    <!-- el contenido se arma con JS -->
+  </div>
+</div>
+
+<!-- ===================== DESPUÉS ===================== -->
+<div class="container">
+  <div class="frase-bloque despues">
+    <span class="tag">Después</span>
+    <p>Cada consulta se clasifica sola en tres preguntas — y si no es para vos, se deriva antes de hacerte perder el tiempo.</p>
+  </div>
+</div>
+
+<!-- ===================== CTA FINAL ===================== -->
+<section class="cta-final">
+  <div class="container">
+    <h2>¿Lo ves claro?</h2>
+    <p>Esto es una versión de ejemplo. La tuya se arma sobre tus propias áreas y tus propios criterios.</p>
+    <a class="btn" href="index.html#reunion">¿Lo ves claro? Agendá 20 minutos y te armo la versión para tu negocio</a>
+  </div>
+</section>
+
+<footer>
+  <div class="container">
+    <p>Demo de ejemplo con datos ficticios — ningún dato real de clientes.</p>
+  </div>
+</footer>
+
+<script>
+/* =========================================================
+   DEMO DE TRIAGE — máquina de estados simple, sin servidor
+   ========================================================= */
+
+// Mensajes de ejemplo que van "llegando" cada vez que se simula una consulta nueva
+var poolMensajes = [
+  "Tenemos un problema con un proveedor del exterior que no nos envió la mercadería que pagamos.",
+  "Quiero armar una sociedad con un socio, ¿qué tipo conviene?",
+  "Me echaron sin preaviso, ¿qué puedo reclamar?",
+  "Un inquilino no me paga el alquiler hace tres meses, ¿lo puedo demandar?",
+  "Me estoy divorciando y no sabemos cómo repartir la casa.",
+  "Necesitamos revisar un contrato de distribución con una empresa de Brasil.",
+  "Mi jefe no me quiere pagar las vacaciones, ¿qué hago?"
+];
+var indicePool = 0;
+
+// Nombres de área para mostrar
+var nombresArea = {
+  corporativo: "Derecho Corporativo",
+  comex: "Comercio Exterior",
+  laboral: "Laboral",
+  civil: "Civil"
+};
+
+var panel = document.getElementById('triagePanel');
+var listaCaotica = document.getElementById('listaCaotica');
+
+var estado = {
+  mensajeActual: null,
+  liActual: null,
+  respuestas: {}
+};
+
+// -------- Paso 0: pantalla inicial --------
+function mostrarInicio(){
+  panel.innerHTML =
+    '<p class="pregunta">Simulá cómo llega y se clasifica una consulta nueva.</p>' +
+    '<div class="opciones"><button class="btn" id="btnSimular">▶ Simular una consulta nueva</button></div>';
+  document.getElementById('btnSimular').addEventListener('click', iniciarTriage);
+}
+
+// -------- Paso 1: llega el mensaje nuevo a la bandeja caótica --------
+function iniciarTriage(){
+  estado.respuestas = {};
+
+  var texto = poolMensajes[indicePool % poolMensajes.length];
+  indicePool++;
+
+  var li = document.createElement('li');
+  li.className = 'msg nuevo';
+  li.innerHTML = '<span class="hora">recién</span>' + texto;
+  listaCaotica.insertBefore(li, listaCaotica.firstChild);
+
+  estado.mensajeActual = texto;
+  estado.liActual = li;
+
+  preguntarTema();
+}
+
+// -------- Pregunta 1: tema --------
+function preguntarTema(){
+  panel.innerHTML =
+    '<p class="breadcrumb">Consulta nueva: "' + estado.mensajeActual + '"</p>' +
+    '<p class="pregunta">¿De qué se trata, a grandes rasgos?</p>' +
+    '<div class="opciones">' +
+      '<button class="btn btn-secundario" data-valor="corporativo">Un contrato o la sociedad de mi empresa</button>' +
+      '<button class="btn btn-secundario" data-valor="comex">Compra o venta con el exterior</button>' +
+      '<button class="btn btn-secundario" data-valor="laboral">Un tema con un empleado o en mi trabajo</button>' +
+      '<button class="btn btn-secundario" data-valor="civil">Un reclamo o deuda con otra persona</button>' +
+      '<button class="btn btn-secundario" data-valor="familia">Un tema de familia, divorcio o sucesión</button>' +
+    '</div>';
+
+  Array.prototype.forEach.call(panel.querySelectorAll('button[data-valor]'), function(btn){
+    btn.addEventListener('click', function(){
+      estado.respuestas.tema = btn.getAttribute('data-valor');
+      if (estado.respuestas.tema === 'familia') {
+        // Fuera de la especialidad del estudio: se filtra amablemente, sin más preguntas
+        derivarAAliado();
+      } else {
+        preguntarTipoCliente();
+      }
+    });
+  });
+}
+
+// -------- Pregunta 2: empresa o particular --------
+function preguntarTipoCliente(){
+  panel.innerHTML =
+    '<p class="breadcrumb">Tema: ' + nombresArea[estado.respuestas.tema] + '</p>' +
+    '<p class="pregunta">¿Sos empresa o particular?</p>' +
+    '<div class="opciones">' +
+      '<button class="btn btn-secundario" data-valor="Empresa">Empresa</button>' +
+      '<button class="btn btn-secundario" data-valor="Particular">Particular</button>' +
+    '</div>';
+
+  Array.prototype.forEach.call(panel.querySelectorAll('button[data-valor]'), function(btn){
+    btn.addEventListener('click', function(){
+      estado.respuestas.tipoCliente = btn.getAttribute('data-valor');
+      preguntarJurisdiccion();
+    });
+  });
+}
+
+// -------- Pregunta 3: jurisdicción --------
+function preguntarJurisdiccion(){
+  panel.innerHTML =
+    '<p class="breadcrumb">Tema: ' + nombresArea[estado.respuestas.tema] + ' · ' + estado.respuestas.tipoCliente + '</p>' +
+    '<p class="pregunta">¿El caso es en Ciudad de Buenos Aires / GBA, o en otra provincia?</p>' +
+    '<div class="opciones">' +
+      '<button class="btn btn-secundario" data-valor="CABA / GBA">CABA / GBA</button>' +
+      '<button class="btn btn-secundario" data-valor="Otra provincia">Otra provincia</button>' +
+    '</div>';
+
+  Array.prototype.forEach.call(panel.querySelectorAll('button[data-valor]'), function(btn){
+    btn.addEventListener('click', function(){
+      estado.respuestas.jurisdiccion = btn.getAttribute('data-valor');
+      clasificar();
+    });
+  });
+}
+
+// -------- Resultado: se clasifica dentro de la especialidad --------
+function clasificar(){
+  var area = estado.respuestas.tema;
+  var nota = estado.respuestas.tipoCliente +
+    (estado.respuestas.jurisdiccion === 'Otra provincia' ? ' · coordinamos por videollamada' : ' · zona CABA/GBA');
+
+  moverMensaje(area, nota, 'clasificado');
+
+  panel.innerHTML =
+    '<div class="resultado">' +
+      '<span class="icono">✅</span>' +
+      '<p class="texto">Clasificado en <strong>' + nombresArea[area] + '</strong>. ' + nota + '.</p>' +
+    '</div>' +
+    '<div class="acciones-resultado">' +
+      '<button class="btn" id="btnOtra">Simular otra consulta</button>' +
+      '<button class="btn btn-secundario" id="btnReiniciar">Reiniciar demo</button>' +
+    '</div>';
+
+  document.getElementById('btnOtra').addEventListener('click', iniciarTriage);
+  document.getElementById('btnReiniciar').addEventListener('click', reiniciarDemo);
+}
+
+// -------- Resultado: no aplica, se deriva amablemente --------
+function derivarAAliado(){
+  moverMensaje('aliado', 'Fuera de nuestra especialidad', 'derivado');
+
+  panel.innerHTML =
+    '<div class="resultado derivado">' +
+      '<span class="icono">🤝</span>' +
+      '<p class="texto">Este estudio no maneja temas de familia. <strong>Se derivó</strong> a un estudio aliado especializado, con una respuesta amable en el momento.</p>' +
+    '</div>' +
+    '<div class="acciones-resultado">' +
+      '<button class="btn" id="btnOtra">Simular otra consulta</button>' +
+      '<button class="btn btn-secundario" id="btnReiniciar">Reiniciar demo</button>' +
+    '</div>';
+
+  document.getElementById('btnOtra').addEventListener('click', iniciarTriage);
+  document.getElementById('btnReiniciar').addEventListener('click', reiniciarDemo);
+}
+
+// -------- Mueve visualmente el mensaje de la bandeja caótica a su área --------
+function moverMensaje(area, nota, clase){
+  var li = estado.liActual;
+  li.classList.add('saliendo');
+
+  setTimeout(function(){
+    li.remove();
+
+    var bloque = document.querySelector('.area-block[data-area="' + area + '"] ul');
+    var vacio = bloque.querySelector('.vacio');
+    if (vacio) vacio.remove();
+
+    var nuevoLi = document.createElement('li');
+    nuevoLi.className = 'msg ' + clase;
+    nuevoLi.innerHTML = estado.mensajeActual + '<span class="nota">' + nota + '</span>';
+    bloque.insertBefore(nuevoLi, bloque.firstChild);
+  }, 300);
+}
+
+// -------- Reinicia todo a su estado original --------
+function reiniciarDemo(){
+  location.reload();
+}
+
+// Arranque
+mostrarInicio();
+</script>
+
+</body>
+</html>
